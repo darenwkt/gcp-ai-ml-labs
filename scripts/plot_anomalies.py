@@ -92,7 +92,8 @@ def main():
 
     # Save output plot
     os.makedirs(args.output_dir, exist_ok=True)
-    save_path = os.path.join(args.output_dir, "anomalies_plot.png")
+    dataset_base = os.path.splitext(dataset_name)[0]
+    save_path = os.path.join(args.output_dir, f"anomalies_plot_{dataset_base}.png")
     plt.savefig(save_path, bbox_inches='tight')
     print(f"Successfully generated and saved plot to {save_path}")
 
