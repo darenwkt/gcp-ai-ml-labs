@@ -1,0 +1,9 @@
+type: array
+properties:
+  feature1:
+    type: number
+  feature2:
+    type: number
+required:
+- feature1
+- feature2
