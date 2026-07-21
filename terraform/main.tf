@@ -51,6 +51,8 @@ locals {
     project     = "anomaly-detection-pipeline"
     environment = "sandbox"
   }
+
+  endpoint_id = "184013891"
 }
 
 resource "google_project_service" "services" {

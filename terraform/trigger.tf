@@ -77,7 +77,7 @@ resource "google_cloudfunctions2_function" "retrain_function" {
       STAGING_BUCKET              = "gs://${google_storage_bucket.pipeline_bucket.name}/staging"
       PIPELINE_SERVICE_ACCOUNT    = google_service_account.pipeline_sa.email
       PREDICT_SCHEMA_GCS_URI      = "gs://${google_storage_bucket.pipeline_bucket.name}/${google_storage_bucket_object.predict_schema.name}"
-      BIGQUERY_TABLE_URI          = "${var.project_id}.prediction_logs.endpoint_184013890_logs"
+      BIGQUERY_TABLE_URI          = "${var.project_id}.prediction_logs.endpoint_${local.endpoint_id}_logs"
     }
   }
 

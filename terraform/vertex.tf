@@ -1,5 +1,5 @@
 resource "google_vertex_ai_endpoint" "endpoint" {
-  name         = "184013890"
+  name         = local.endpoint_id
   display_name = var.endpoint_display_name
   location     = var.region
   project      = var.project_id
@@ -10,7 +10,7 @@ resource "google_vertex_ai_endpoint" "endpoint" {
     enabled       = true
     sampling_rate = 1.0
     bigquery_destination {
-      output_uri = "bq://${var.project_id}.prediction_logs.endpoint_184013890_logs"
+      output_uri = "bq://${var.project_id}.prediction_logs.endpoint_${local.endpoint_id}_logs"
     }
   }
 
