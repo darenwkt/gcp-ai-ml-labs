@@ -1,0 +1,9 @@
+.git/
+.venv/
+.terraform/
+terraform.tfstate*
+*.tfstate*
+.terraform.tfstate.lock.info
+.terraform.lock.hcl
+*.zip
+*.tfvars
