@@ -62,6 +62,8 @@ components:
           parameterType: STRING
         prepared_data_output_gcs_uri:
           parameterType: STRING
+        project_id:
+          parameterType: STRING
         static_training_data_gcs_uri:
           parameterType: STRING
   comp-train-isolation-forest:
@@ -292,35 +294,42 @@ deploymentSpec:
 
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef prepare_training_data(\n    static_training_data_gcs_uri: str,\n\
-          \    bigquery_table_uri: str,\n    prepared_data_output_gcs_uri: str,\n\
-          ):\n    from google.cloud import bigquery\n    from google.cloud import\
-          \ storage\n    import pandas as pd\n    from urllib.parse import urlparse\n\
-          \    import os\n\n    fallback = False\n    if bigquery_table_uri and bigquery_table_uri.strip():\n\
-          \        print(f\"Preparing data from BigQuery table: {bigquery_table_uri}\"\
-          )\n        try:\n            client = bigquery.Client()\n            query\
-          \ = f\"\"\"\n                SELECT\n                  CAST(SPLIT(TRIM(payload,\
+          \ *\n\ndef prepare_training_data(\n    project_id: str,\n    static_training_data_gcs_uri:\
+          \ str,\n    bigquery_table_uri: str,\n    prepared_data_output_gcs_uri:\
+          \ str,\n):\n    from google.cloud import bigquery\n    from google.cloud\
+          \ import storage\n    import pandas as pd\n    from urllib.parse import\
+          \ urlparse\n    import os\n\n    fallback = False\n    if bigquery_table_uri\
+          \ and bigquery_table_uri.strip():\n        print(f\"Preparing data from\
+          \ BigQuery table: {bigquery_table_uri} in project {project_id}\")\n    \
+          \    try:\n            client = bigquery.Client(project=project_id)\n  \
+          \          query = f\"\"\"\n                SELECT\n                  CAST(SPLIT(TRIM(payload,\
           \ '[]'), ',')[OFFSET(0)] AS FLOAT64) AS feature1,\n                  CAST(SPLIT(TRIM(payload,\
           \ '[]'), ',')[OFFSET(1)] AS FLOAT64) AS feature2\n                FROM\n\
           \                  `{bigquery_table_uri}`,\n                  UNNEST(request_payload)\
           \ AS payload\n                WHERE\n                  logging_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(),\
           \ INTERVAL 30 DAY)\n            \"\"\"\n            print(f\"Running query:\\\
-          n{query}\")\n            df = client.query(query).to_dataframe()\n     \
-          \       print(f\"Query returned {len(df)} rows.\")\n            if len(df)\
-          \ == 0:\n                print(\"Warning: BigQuery returned 0 rows. Falling\
-          \ back to static training data.\")\n                fallback = True\n  \
-          \      except Exception as e:\n            print(f\"Error querying BigQuery:\
-          \ {e}. Falling back to static training data.\")\n            fallback =\
-          \ True\n    else:\n        print(\"No BigQuery table provided. Preparing\
-          \ data from static GCS URI.\")\n        fallback = True\n\n    if fallback:\n\
-          \        print(f\"Copying static training data from {static_training_data_gcs_uri}\
-          \ to {prepared_data_output_gcs_uri}\")\n        df = pd.read_csv(static_training_data_gcs_uri)\n\
-          \n    parsed_url = urlparse(prepared_data_output_gcs_uri)\n    bucket_name\
-          \ = parsed_url.netloc\n    blob_path = parsed_url.path.lstrip(\"/\")\n\n\
-          \    storage_client = storage.Client()\n    bucket = storage_client.bucket(bucket_name)\n\
-          \    blob = bucket.blob(blob_path)\n\n    csv_data = df.to_csv(index=False)\n\
-          \    blob.upload_from_string(csv_data, content_type=\"text/csv\")\n    print(f\"\
-          Prepared training data saved to {prepared_data_output_gcs_uri}\")\n\n"
+          n{query}\")\n            df_bq = client.query(query).to_dataframe()\n  \
+          \          print(f\"Query returned {len(df_bq)} rows.\")\n            if\
+          \ len(df_bq) == 0:\n                print(\"Warning: BigQuery returned 0\
+          \ rows. Falling back to static training data.\")\n                fallback\
+          \ = True\n            else:\n                # Combine static baseline data\
+          \ and new BigQuery logging data\n                print(f\"Loading static\
+          \ baseline data from {static_training_data_gcs_uri}\")\n               \
+          \ df_static = pd.read_csv(static_training_data_gcs_uri)\n              \
+          \  df = pd.concat([df_static, df_bq], ignore_index=True)\n             \
+          \   print(f\"Combined dataset has {len(df)} total rows.\")\n        except\
+          \ Exception as e:\n            print(f\"Error querying BigQuery: {e}. Falling\
+          \ back to static training data.\")\n            fallback = True\n    else:\n\
+          \        print(\"No BigQuery table provided. Preparing data from static\
+          \ GCS URI.\")\n        fallback = True\n\n    if fallback:\n        print(f\"\
+          Copying static training data from {static_training_data_gcs_uri} to {prepared_data_output_gcs_uri}\"\
+          )\n        df = pd.read_csv(static_training_data_gcs_uri)\n\n    parsed_url\
+          \ = urlparse(prepared_data_output_gcs_uri)\n    bucket_name = parsed_url.netloc\n\
+          \    blob_path = parsed_url.path.lstrip(\"/\")\n\n    storage_client = storage.Client()\n\
+          \    bucket = storage_client.bucket(bucket_name)\n    blob = bucket.blob(blob_path)\n\
+          \n    csv_data = df.to_csv(index=False)\n    blob.upload_from_string(csv_data,\
+          \ content_type=\"text/csv\")\n    print(f\"Prepared training data saved\
+          \ to {prepared_data_output_gcs_uri}\")\n\n"
         image: us-docker.pkg.dev/vertex-ai/training/sklearn-cpu.1-6:latest
     exec-train-isolation-forest:
       container:
@@ -443,6 +452,8 @@ root:
             prepared_data_output_gcs_uri:
               runtimeValue:
                 constant: '{{$.inputs.parameters[''pipelinechannel--model_output_gcs_uri'']}}_prepared_training_data.csv'
+            project_id:
+              componentInputParameter: project_id
             static_training_data_gcs_uri:
               componentInputParameter: training_data_gcs_uri
         taskInfo:

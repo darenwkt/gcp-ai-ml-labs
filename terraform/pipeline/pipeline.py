@@ -8,6 +8,7 @@ from kfp import compiler
     packages_to_install=["google-cloud-bigquery", "db-dtypes"]
 )
 def prepare_training_data(
+    project_id: str,
     static_training_data_gcs_uri: str,
     bigquery_table_uri: str,
     prepared_data_output_gcs_uri: str,
@@ -20,9 +21,9 @@ def prepare_training_data(
 
     fallback = False
     if bigquery_table_uri and bigquery_table_uri.strip():
-        print(f"Preparing data from BigQuery table: {bigquery_table_uri}")
+        print(f"Preparing data from BigQuery table: {bigquery_table_uri} in project {project_id}")
         try:
-            client = bigquery.Client()
+            client = bigquery.Client(project=project_id)
             query = f"""
                 SELECT
                   CAST(SPLIT(TRIM(payload, '[]'), ',')[OFFSET(0)] AS FLOAT64) AS feature1,
@@ -34,11 +35,17 @@ def prepare_training_data(
                   logging_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)
             """
             print(f"Running query:\n{query}")
-            df = client.query(query).to_dataframe()
-            print(f"Query returned {len(df)} rows.")
-            if len(df) == 0:
+            df_bq = client.query(query).to_dataframe()
+            print(f"Query returned {len(df_bq)} rows.")
+            if len(df_bq) == 0:
                 print("Warning: BigQuery returned 0 rows. Falling back to static training data.")
                 fallback = True
+            else:
+                # Combine static baseline data and new BigQuery logging data
+                print(f"Loading static baseline data from {static_training_data_gcs_uri}")
+                df_static = pd.read_csv(static_training_data_gcs_uri)
+                df = pd.concat([df_static, df_bq], ignore_index=True)
+                print(f"Combined dataset has {len(df)} total rows.")
         except Exception as e:
             print(f"Error querying BigQuery: {e}. Falling back to static training data.")
             fallback = True
@@ -397,6 +404,7 @@ def anomaly_detection_pipeline(
 
     # 1. Prepare the data (fetch from BigQuery if available, else static fallback)
     prepare_task = prepare_training_data(
+        project_id=project_id,
         static_training_data_gcs_uri=training_data_gcs_uri,
         bigquery_table_uri=bigquery_table_uri,
         prepared_data_output_gcs_uri=prepared_data_gcs_uri,
