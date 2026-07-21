@@ -52,7 +52,7 @@ locals {
     environment = "sandbox"
   }
 
-  endpoint_id = "184013891"
+  endpoint_id = "184013892"
 }
 
 resource "google_project_service" "services" {
