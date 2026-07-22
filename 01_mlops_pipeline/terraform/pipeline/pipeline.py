@@ -177,7 +177,7 @@ def deploy_model_to_endpoint(
     # Deploy the model to the endpoint.
     # Note: For simplicity and continuous delivery, we route 100% traffic to the new model
     # and undeploy older models deployed to this endpoint.
-    print(f"Deploying model to endpoint {endpoint.resource_name} with deployed_model_id {deployed_model_id}...")
+    print(f"Deploying model {uploaded_model.resource_name} to endpoint {endpoint.resource_name}...")
     
     # List currently deployed models to undeploy them later
     deployed_models_to_remove = endpoint.list_models()

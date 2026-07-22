@@ -239,7 +239,7 @@ deploymentSpec:
           \n    # Deploy the model to the endpoint.\n    # Note: For simplicity and\
           \ continuous delivery, we route 100% traffic to the new model\n    # and\
           \ undeploy older models deployed to this endpoint.\n    print(f\"Deploying\
-          \ model to endpoint {endpoint.resource_name} with deployed_model_id {deployed_model_id}...\"\
+          \ model {uploaded_model.resource_name} to endpoint {endpoint.resource_name}...\"\
           )\n\n    # List currently deployed models to undeploy them later\n    deployed_models_to_remove\
           \ = endpoint.list_models()\n\n    # Deploy the new model\n    endpoint.deploy(\n\
           \        model=uploaded_model,\n        deployed_model_display_name=model_display_name,\n\
