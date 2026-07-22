@@ -29,18 +29,32 @@ resource "google_service_account" "function_sa" {
   depends_on   = [google_project_service.services]
 }
 
-# Grant Project Owner role to Cloud Function SA to fully unblock retraining triggers
-resource "google_project_iam_member" "function_sa_owner" {
+# Grant Gemini Enterprise Agent Platform User and Storage Object Viewer roles to Cloud Function SA
+resource "google_project_iam_member" "function_sa_vertex" {
   project = var.project_id
-  role    = "roles/owner"
+  role    = "roles/aiplatform.user"
   member  = "serviceAccount:${google_service_account.function_sa.email}"
 }
+
+resource "google_project_iam_member" "function_sa_storage" {
+  project = var.project_id
+  role    = "roles/storage.objectViewer"
+  member  = "serviceAccount:${google_service_account.function_sa.email}"
+}
+
+# Grant the Cloud Function SA permission to run pipeline jobs as the Pipeline SA
+resource "google_service_account_iam_member" "function_sa_act_as_pipeline_sa" {
+  service_account_id = google_service_account.pipeline_sa.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.function_sa.email}"
+}
+
 
 # --- Cloud Function (Gen 2) ---
 resource "google_cloudfunctions2_function" "retrain_function" {
   name        = "retrain-trigger-function"
   location    = var.region
-  description = "Triggered by Pub/Sub model monitoring alerts to start Vertex AI retraining pipeline."
+  description = "Triggered by Pub/Sub model monitoring alerts to start Gemini Enterprise Agent Platform retraining pipeline."
   labels      = local.common_labels
 
   build_config {
@@ -72,7 +86,6 @@ resource "google_cloudfunctions2_function" "retrain_function" {
       MODEL_DISPLAY_NAME          = var.model_display_name
       ENDPOINT_DISPLAY_NAME       = var.endpoint_display_name
       SERVING_CONTAINER_IMAGE_URI = var.serving_container_image_uri
-      DEPLOYED_MODEL_ID           = var.deployed_model_id
       SKEW_THRESHOLD              = tostring(var.skew_threshold)
       STAGING_BUCKET              = "gs://${google_storage_bucket.pipeline_bucket.name}/staging"
       PIPELINE_SERVICE_ACCOUNT    = google_service_account.pipeline_sa.email
@@ -89,7 +102,9 @@ resource "google_cloudfunctions2_function" "retrain_function" {
   }
 
   depends_on = [
-    google_project_iam_member.function_sa_owner,
+    google_project_iam_member.function_sa_vertex,
+    google_project_iam_member.function_sa_storage,
+    google_service_account_iam_member.function_sa_act_as_pipeline_sa,
     google_pubsub_topic_iam_member.sink_publisher
   ]
 }

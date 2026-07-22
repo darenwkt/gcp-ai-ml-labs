@@ -41,7 +41,7 @@ def main():
         chunk = instances[i:i + chunk_size]
         print(f"Sending chunk {i // chunk_size + 1} ({len(chunk)} instances)...")
         
-        # Vertex AI Endpoint predict expects list of instances
+        # Gemini Enterprise Agent Platform Endpoint predict expects list of instances
         response = endpoint.predict(instances=chunk)
         
         # Isolation Forest outputs: 1 for normal, -1 for anomaly

@@ -52,7 +52,7 @@ locals {
     environment = "sandbox"
   }
 
-  endpoint_id = "184013893"
+  endpoint_id = "735492810"
 }
 
 resource "google_project_service" "services" {
@@ -90,7 +90,7 @@ resource "google_storage_bucket" "trigger_bucket" {
 resource "google_storage_bucket_object" "training_data" {
   name   = "data/training_data.csv"
   bucket = google_storage_bucket.pipeline_bucket.name
-  source = "${path.module}/data/training_data.csv"
+  source = "${path.module}/../data/training_data.csv"
 }
 
 resource "google_storage_bucket_object" "pipeline_spec" {
@@ -125,18 +125,30 @@ resource "google_storage_bucket_object" "cf_source_zip" {
 # Pipeline Execution Service Account
 resource "google_service_account" "pipeline_sa" {
   account_id   = "anomaly-pipeline-sa"
-  display_name = "Vertex AI Pipeline Execution Service Account"
+  display_name = "Gemini Enterprise Agent Platform Pipeline Execution Service Account"
   depends_on   = [google_project_service.services]
 }
 
-# Grant Project Owner role to Pipeline SA to fully unblock Vertex AI execution
-resource "google_project_iam_member" "pipeline_sa_owner" {
+# Grant Gemini Enterprise Agent Platform Admin, Storage Admin, and BigQuery Admin roles to Pipeline SA
+resource "google_project_iam_member" "pipeline_sa_vertex" {
   project = var.project_id
-  role    = "roles/owner"
+  role    = "roles/aiplatform.admin"
   member  = "serviceAccount:${google_service_account.pipeline_sa.email}"
 }
 
-# Vertex AI Service Agent Identity Creation (Forces GCP to instantiate it during deploy)
+resource "google_project_iam_member" "pipeline_sa_storage" {
+  project = var.project_id
+  role    = "roles/storage.admin"
+  member  = "serviceAccount:${google_service_account.pipeline_sa.email}"
+}
+
+resource "google_project_iam_member" "pipeline_sa_bigquery" {
+  project = var.project_id
+  role    = "roles/bigquery.admin"
+  member  = "serviceAccount:${google_service_account.pipeline_sa.email}"
+}
+
+# Gemini Enterprise Agent Platform Service Agent Identity Creation (Forces GCP to instantiate it during deploy)
 resource "google_project_service_identity" "ai_sa" {
   provider = google-beta
   project  = var.project_id

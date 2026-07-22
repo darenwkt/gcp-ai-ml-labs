@@ -17,7 +17,7 @@ resource "google_vertex_ai_endpoint" "endpoint" {
   depends_on = [google_project_service.services]
 }
 
-# Grant the Vertex AI Service Agent ActAs permission on the Pipeline SA
+# Grant the Gemini Enterprise Agent Platform Service Agent ActAs permission on the Pipeline SA
 resource "google_service_account_iam_member" "vertex_agent_act_as_pipeline_sa" {
   service_account_id = google_service_account.pipeline_sa.name
   role               = "roles/iam.serviceAccountUser"

@@ -132,7 +132,6 @@ def deploy_model_to_endpoint(
     endpoint_display_name: str,
     model_gcs_uri: str,
     serving_container_image_uri: str,
-    deployed_model_id: str,
 ) -> str:
     from google.cloud import aiplatform
 
@@ -188,7 +187,7 @@ def deploy_model_to_endpoint(
         model=uploaded_model,
         deployed_model_display_name=model_display_name,
         traffic_percentage=100,
-        machine_type="n1-standard-2", # Minimum machine type for Vertex AI predictions
+        machine_type="n1-standard-2", # Minimum machine type for Gemini Enterprise Agent Platform predictions
         min_replica_count=1,
         max_replica_count=1,
     )
@@ -227,7 +226,6 @@ def configure_model_monitoring(
     region: str,
     model_display_name: str,
     endpoint_display_name: str,
-    deployed_model_id: str,
     training_data_gcs_uri: str,
     skew_threshold: float,
 ):
@@ -385,7 +383,7 @@ def configure_model_monitoring(
 # Define the KFP Pipeline
 @dsl.pipeline(
     name="isolation-forest-anomaly-pipeline",
-    description="Pipeline that trains an Isolation Forest anomaly detection model and deploys it to a Vertex AI Endpoint"
+    description="Pipeline that trains an Isolation Forest anomaly detection model and deploys it to a Gemini Enterprise Agent Platform Endpoint"
 )
 def anomaly_detection_pipeline(
     project_id: str,
@@ -395,7 +393,6 @@ def anomaly_detection_pipeline(
     model_display_name: str,
     endpoint_display_name: str,
     serving_container_image_uri: str,
-    deployed_model_id: str,
     skew_threshold: float,
     predict_schema_gcs_uri: str,
     bigquery_table_uri: str = "",
@@ -425,7 +422,6 @@ def anomaly_detection_pipeline(
         endpoint_display_name=endpoint_display_name,
         model_gcs_uri=model_output_gcs_uri,
         serving_container_image_uri=serving_container_image_uri,
-        deployed_model_id=deployed_model_id,
     )
     
     deploy_task.after(train_task)
@@ -436,7 +432,6 @@ def anomaly_detection_pipeline(
         region=region,
         model_display_name=model_display_name,
         endpoint_display_name=endpoint_display_name,
-        deployed_model_id=deploy_task.output,
         training_data_gcs_uri=training_data_gcs_uri,
         skew_threshold=skew_threshold,
     )

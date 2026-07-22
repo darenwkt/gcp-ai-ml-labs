@@ -12,7 +12,7 @@ def main():
     parser.add_argument("--endpoint-display-name", default="anomaly-detection-endpoint")
     parser.add_argument("--data-path", default="data/serving_data_skewed.csv")
     parser.add_argument("--limit", type=int, default=200, help="Number of rows to send")
-    parser.add_argument("--output-dir", default="/Users/darenwkt/.gemini/jetski/brain/452e1ad9-ac84-4137-aac3-abdd0cbbe7da")
+    parser.add_argument("--output-dir", default="photo", help="Directory to save output plots")
     args = parser.parse_args()
 
     aiplatform.init(project=args.project, location=args.region)
@@ -79,7 +79,7 @@ def main():
 
     # Add labels, legend and title
     dataset_name = os.path.basename(args.data_path)
-    ax.set_title(f'Vertex AI Predictions for Anomaly Detection ({dataset_name})', fontsize=15, fontweight='bold', pad=20, color='#f3f4f6')
+    ax.set_title(f'Gemini Enterprise Agent Platform Predictions for Anomaly Detection ({dataset_name})', fontsize=15, fontweight='bold', pad=20, color='#f3f4f6')
     ax.set_xlabel('Feature 1', fontsize=12, labelpad=10, color='#d1d5db')
     ax.set_ylabel('Feature 2', fontsize=12, labelpad=10, color='#d1d5db')
     ax.tick_params(colors='#9ca3af')

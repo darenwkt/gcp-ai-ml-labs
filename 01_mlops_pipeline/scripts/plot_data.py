@@ -44,10 +44,10 @@ def main():
 
     plt.tight_layout()
 
-    # Save to the artifacts directory
-    artifact_dir = "/Users/darenwkt/.gemini/jetski/brain/84ea1d05-b3cc-4108-a3f5-28e23c531a98"
-    os.makedirs(artifact_dir, exist_ok=True)
-    save_path = os.path.join(artifact_dir, "dataset_comparison.png")
+    # Save to the photo directory
+    photo_dir = "photo"
+    os.makedirs(photo_dir, exist_ok=True)
+    save_path = os.path.join(photo_dir, "dataset_comparison.png")
     
     plt.savefig(save_path, bbox_inches='tight')
     print(f"Plot saved successfully to {save_path}")

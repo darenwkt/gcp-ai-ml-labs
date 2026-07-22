@@ -1,8 +1,8 @@
 variable "project_id" {
   type        = string
   description = "The GCP project ID to deploy resources into."
-  default     = "darenwkt-sandbox"
 }
+
 
 
 variable "region" {
@@ -13,21 +13,16 @@ variable "region" {
 
 variable "endpoint_display_name" {
   type        = string
-  description = "The display name of the Vertex AI Endpoint."
+  description = "The display name of the Gemini Enterprise Agent Platform Endpoint."
   default     = "anomaly-detection-endpoint"
 }
 
 variable "model_display_name" {
   type        = string
-  description = "The display name of the Vertex AI Model."
+  description = "The display name of the Gemini Enterprise Agent Platform Model."
   default     = "anomaly-detection-model"
 }
 
-variable "deployed_model_id" {
-  type        = string
-  description = "The user-specified ID of the deployed model on the Endpoint."
-  default     = "anomaly-detector-deployed"
-}
 
 variable "serving_container_image_uri" {
   type        = string
