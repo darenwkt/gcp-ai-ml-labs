@@ -52,7 +52,7 @@ locals {
     environment = "sandbox"
   }
 
-  endpoint_id = "735492810"
+  endpoint_id = "735492812"
 }
 
 resource "google_project_service" "services" {
@@ -90,7 +90,7 @@ resource "google_storage_bucket" "trigger_bucket" {
 resource "google_storage_bucket_object" "training_data" {
   name   = "data/training_data.csv"
   bucket = google_storage_bucket.pipeline_bucket.name
-  source = "${path.module}/../data/training_data.csv"
+  source = "${path.module}/data/training_data.csv"
 }
 
 resource "google_storage_bucket_object" "pipeline_spec" {
