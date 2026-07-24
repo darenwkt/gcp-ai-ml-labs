@@ -1,0 +1,12 @@
+# Ignore local terraform variable credentials
+terraform/terraform.tfvars
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate*
+
+# Ignore temporary cache directories
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.env

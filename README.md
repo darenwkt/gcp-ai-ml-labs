@@ -11,6 +11,7 @@ Rather than just focusing on model algorithms in isolated Jupyter notebooks, the
 | Lab | Difficulty | Focus Area | GCP Services Used | Links |
 | :--- | :--- | :--- | :--- | :--- |
 | **01. Gemini Enterprise Agent Platform MLOps Pipeline** | Intermediate | Model Monitoring, Retraining, IaC | Gemini Enterprise Agent Platform, BigQuery, Cloud Functions, Pub/Sub, Terraform | [Lab Readme](01_mlops_pipeline/README.md) |
+| **03. IT Support Ticket LLM Fine-Tuning & Serving** | Advanced | PEFT/LoRA Fine-tuning, Vertex AI Pipelines, serving | Vertex AI, Artifact Registry, GCS, Terraform, Infrastructure Manager | [Lab Readme](03_model_fine_tuning/README.md) |
 | *More coming soon...* | - | Generative AI, Batch Inferencing, Feature Store | Gemini Enterprise Agent Platform Agent Builder, Dataflow, Gemini Enterprise Agent Platform Feature Store | *In Development* |
 
 ---
@@ -51,6 +52,32 @@ Build an end-to-end unsupervised anomaly detection system using an **Isolation F
 * **Model Deployment Strategies**: Automating deployment splits and cleanly undeploying older model versions.
 
 👉 **Get started with [Lab 1: 01_mlops_pipeline](01_mlops_pipeline/README.md).**
+
+---
+
+### Lab 3: IT Support Ticket LLM Fine-Tuning & Serving Pipeline
+Fine-tune a pre-trained LLM (such as `gpt2` or `Qwen2.5-0.5B-Instruct`) on a dataset of IT support tickets using Hugging Face **PEFT (LoRA)** inside a Vertex AI Pipeline. The pipeline automates dataset preparation, single-GPU training, model merging, registration in Vertex AI Model Registry, and deployment to a serverless Vertex AI Endpoint.
+
+```
++--------------------------+     SFTTrainer (LoRA)      +----------------------------+
+| Hugging Face / GCS IT    | ------------------------> |    Fine-Tuning Component   |
+|      Tickets Dataset     |                           |       (Single-GPU T4)      |
++--------------------------+                           +----------------------------+
+                                                                     |
+                                                                     v
++--------------------------+      Auto-Deployment      +----------------------------+
+|   Vertex AI Prediction   | <------------------------ |  Vertex AI Model Registry  |
+|         Endpoint         |                           |  (Merged weights uploaded) |
++--------------------------+                           +----------------------------+
+```
+
+#### Key Concepts Learned:
+* **LLM Fine-Tuning & PEFT**: Implementing parameter-efficient SFT fine-tuning (LoRA) using Hugging Face transformers, PEFT, and TRL datasets.
+* **Continuous Integration & Delivery (CI/CD)**: Compiling and executing Vertex AI Pipeline Runs to orchestrate model fine-tuning and endpoint deployment.
+* **Serverless Serving**: Deploying a containerized Flask model server loading fine-tuned weights on a Vertex AI endpoint.
+
+👉 **Get started with [Lab 3: 03_model_fine_tuning](03_model_fine_tuning/README.md).**
+
 
 ---
 

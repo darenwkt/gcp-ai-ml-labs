@@ -1,0 +1,5 @@
+project_id       = "<YOUR_PROJECT_ID>"
+region           = "us-central1"
+bucket_name      = "<YOUR_GCS_BUCKET_NAME>"
+pipeline_sa_name = "gpt2-finetune-pipeline-sa"
+repository_id    = "gpt2-finetuning-images"
