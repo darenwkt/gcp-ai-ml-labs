@@ -308,7 +308,7 @@ def configure_model_monitoring(
         ),
         notification_spec=aiplatform_v1beta1.ModelMonitoringNotificationSpec(
             email_config=aiplatform_v1beta1.ModelMonitoringNotificationSpec.EmailConfig(
-                user_emails=["darenwkt@google.com"]
+                user_emails=[os.environ.get("USER_EMAIL", "<YOUR_EMAIL_ADDRESS>")]
             ),
             enable_cloud_logging=True
         )
