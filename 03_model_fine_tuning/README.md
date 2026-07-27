@@ -40,6 +40,19 @@ $$\Delta W = B \times A$$
 where $B$ is a matrix of size $(d \times r)$ and $A$ is a matrix of size $(r \times k)$.
 By choosing a small rank $r$ (e.g. $r=8$), we reduce the number of parameters to train by **over 99%**, saving GPU memory and accelerating training time.
 
+#### Parameter Reduction Analysis (GPT-2 124M Base Model)
+Applying LoRA to the attention projection layers (`c_attn` of size $768 \times 2304$, across all 12 transformer layers):
+
+| Fine-Tuning Type | Rank ($r$) | Trainable Parameters | % of Base Model (124M) | Parameter Reduction |
+| :--- | :--- | :--- | :--- | :--- |
+| **Full Fine-Tuning** | *N/A* | 124,439,808 | 100.0000% | *None* |
+| **LoRA** | **r = 64** | 2,359,296 | 1.8960% | **98.1040%** |
+| **LoRA** | **r = 32** | 1,179,648 | 0.9480% | **99.0520%** |
+| **LoRA** | **r = 16** | 589,824 | 0.4740% | **99.5260%** |
+| **LoRA (Default)** | **r = 8** | 294,912 | 0.2370% | **99.7630%** |
+| **LoRA** | **r = 4** | 147,456 | 0.1185% | **99.8815%** |
+| **LoRA** | **r = 1** | 36,864 | 0.0296% | **99.9704%** |
+
 ```mermaid
 graph LR
     X["Input (x)"] --> |"Forward Pass"| W0["Frozen Base Weights (W₀) <br> (d × k)"]
