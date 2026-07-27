@@ -8,4 +8,4 @@ pandas==2.2.1
 fsspec==2024.2.0
 bitsandbytes==0.42.0
 scipy
-
+rich
