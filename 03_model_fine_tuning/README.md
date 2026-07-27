@@ -102,6 +102,7 @@ Even with LoRA, loading a large frozen base model in standard full-precision (FP
 - **Intuition**: **QLoRA (Quantized LoRA)** quantizes the frozen base model weights down to 4-bit NormalFloat (NF4) precision during training. The trainable LoRA adapters are still computed in 16-bit precision.
 - **Memory Benefit**: Reduces base model memory footprint by up to 75% without losing model accuracy. This allows developers to fine-tune 8B-parameter models on single commodity GPUs (like NVIDIA T4 or L4).
 - **Features**: Uses *Double Quantization* to save quantization constants overhead, and *Paged Optimizers* to handle memory spikes gracefully by swapping parameters to CPU RAM.
+- **Downside (Training Speed)**: Slower training. Because weights are stored in 4-bit but computation must happen in 16-bit, weights are dynamically dequantized (uncompressed) to FP16/BF16 on-the-fly during both forward and backward passes. This continuous quantization/dequantization loop adds runtime latency, making QLoRA slower than standard LoRA.
 
 ---
 
@@ -115,6 +116,7 @@ Standard LoRA updates weights by adding a low-rank matrix increment $\Delta W$. 
 DoRA freezes the base weights and applies LoRA updates *only* to the directional matrix $V$ while optimizing magnitude vector $m$ independently. This decomposition achieves training stability and model accuracy virtually identical to Full Fine-Tuning while preserving the parameter efficiency of LoRA.
 
 - **Intuition**: LoRA updates are constrained. DoRA resolves this by decomposing the weights update into two components: a scaling magnitude vector $m$ and a directional matrix $V$. It only trains LoRA adapters on direction $V$ while optimizing magnitude $m$ independently. This matches FFT convergence and accuracy perfectly, but at the cost of a tiny increase in optimizer state memory for magnitude vector.
+- **Downside (Training Speed)**: Slower training. Decoupling the weight updates into separate magnitude and directional components and synchronizing them adds significant mathematical complexity to backpropagation steps. This makes DoRA training take roughly 1.5x to 2x longer than standard LoRA.
 
 ---
 
