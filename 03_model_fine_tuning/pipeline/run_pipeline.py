@@ -59,7 +59,7 @@ def main():
             
         yaml_content = yaml_content.replace(
             "cachingOptions: {}",
-            "cachingOptions:\n          enableCache: true"
+            "cachingOptions:\n          enableCache: false"
         )
         
         with open(temp_yaml, "w") as f:
