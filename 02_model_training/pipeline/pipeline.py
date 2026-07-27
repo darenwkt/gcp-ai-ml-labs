@@ -362,6 +362,7 @@ def gpt2_pipeline(
         scheduling_strategy=scheduling_strategy,
     )
     train_task.set_caching_options(enable_caching=False)
+    train_task.set_retry(num_retries=5, backoff_duration="60s", backoff_factor=2.0)
 
     # Step 2: LoRA Fine-tuning
     lora_model_dir = f"{model_output_uri}_lora"
@@ -382,6 +383,7 @@ def gpt2_pipeline(
         lora_max_steps=lora_max_steps,
     )
     finetune_task.set_caching_options(enable_caching=False)
+    finetune_task.set_retry(num_retries=5, backoff_duration="60s", backoff_factor=2.0)
     finetune_task.after(train_task)
 
     # Step 3: Deploy
