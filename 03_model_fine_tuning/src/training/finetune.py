@@ -151,6 +151,7 @@ def main():
     if args.finetuning_type != "fft":
         use_dora = (args.finetuning_type == "dora")
         print(f"Configuring PEFT Adapter (DoRA: {use_dora})...")
+        fan_in_fan_out = True if "gpt2" in args.model_id.lower() else False
         lora_config = LoraConfig(
             r=args.lora_r,
             lora_alpha=args.lora_alpha,
@@ -158,7 +159,8 @@ def main():
             lora_dropout=0.05,
             bias="none",
             task_type="CAUSAL_LM",
-            use_dora=use_dora
+            use_dora=use_dora,
+            fan_in_fan_out=fan_in_fan_out
         )
     
     # 4. Training Arguments

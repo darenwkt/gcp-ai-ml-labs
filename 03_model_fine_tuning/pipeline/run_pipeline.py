@@ -42,7 +42,7 @@ def main():
     aiplatform.init(project=args.project_id, location=args.region)
     
     timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    model_output_uri = f"gs://{args.bucket_name}/model-output/{timestamp}"
+    model_output_uri = f"gs://{args.bucket_name}/model-output/{args.finetuning_type}-{timestamp}"
     pipeline_root = f"gs://{args.bucket_name}/pipeline_root"
     
     print("Compiling pipeline definition...")
@@ -67,7 +67,7 @@ def main():
             
         print("Creating PipelineJob...")
         job = aiplatform.PipelineJob(
-            display_name=f"gpt2-sft-support-tickets-run-{timestamp}",
+            display_name=f"gpt2-sft-support-tickets-pipeline-{args.finetuning_type}-{timestamp}",
             template_path=temp_yaml,
             pipeline_root=pipeline_root,
             parameter_values={

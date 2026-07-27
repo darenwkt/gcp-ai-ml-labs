@@ -62,7 +62,7 @@ def train_gpt2_sft_job(
     
     print(f"Submitting Fine-Tuning CustomJob under service account: {pipeline_sa_email}")
     job = aiplatform.CustomJob(
-        display_name="gpt2-sft-finetuning-custom-job",
+        display_name=f"gpt2-sft-finetuning-custom-job-{finetuning_type}",
         worker_pool_specs=worker_pool_specs,
         staging_bucket=f"gs://{bucket_name}/staging",
     )
@@ -186,8 +186,8 @@ def gpt2_sft_pipeline(
     deploy_task = deploy_model_to_endpoint(
         project_id=project_id,
         region=region,
-        model_display_name=model_display_name,
-        endpoint_display_name=endpoint_display_name,
+        model_display_name=f"{model_display_name}-{finetuning_type}",
+        endpoint_display_name=f"{endpoint_display_name}-{finetuning_type}",
         model_gcs_uri=train_task.output,
         serving_container_image_uri=serving_container_image_uri,
     )
