@@ -27,31 +27,39 @@ graph TD
 
 ---
 
-## 🧠 SFT & LoRA Concept Deep-Dive
+## 🧠 SFT & Fine-Tuning Concept Deep-Dive
+
+To adapt a pre-trained Large Language Model for specific tasks, we follow a progression of SFT (Supervised Fine-Tuning) paradigms. Below is the intuition and evolution of these paradigms:
+
+```mermaid
+graph LR
+    SFT[SFT Concept] --> FFT[Full Fine-Tuning - FFT]
+    FFT -->|Too much memory/compute| LoRA[LoRA]
+    LoRA -->|Base model weight footprint too large| QLoRA[QLoRA]
+    LoRA -->|Sub-optimal adapter accuracy| DoRA[DoRA]
+```
+
+---
 
 ### 1. Supervised Fine-Tuning (SFT)
 A pre-trained base LLM is trained on general internet text to predict the next word. While highly capable, it doesn't know how to follow instructions or act as an assistant. **Supervised Fine-Tuning (SFT)** feeds structured prompt-response pairs (like Support Ticket -> Resolution Answer) to teach the model to behave as an interactive assistant.
 
-### 2. Low-Rank Adaptation (LoRA)
-Fine-tuning all billions of parameters in a base model (full fine-tuning) is computationally expensive, slow, and requires massive GPU memory. **LoRA (Low-Rank Adaptation)** freezes the original base model weights and inserts tiny trainable weight matrices into attention layers. 
+---
+
+### 2. Full Fine-Tuning (FFT)
+In **Full Fine-Tuning (FFT)**, we update 100% of the pre-trained model's parameters (e.g. all 124 million parameters in GPT-2) during training.
+- **Intuition**: Extremely expressive and accurate. The model can modify any connection to adapt to the new domain.
+- **Memory Bottleneck**: Extremely expensive. Because the optimizer (like AdamW) needs to track first and second gradient moments for *every* parameter, you need **4x the model's footprint** in GPU memory just for the optimizer states. This makes FFT impossible on commodity GPUs for models larger than a few hundred million parameters.
+- **Risk**: High risk of *catastrophic forgetting* (the model overrides its general pre-trained knowledge).
+
+---
+
+### 3. Low-Rank Adaptation (LoRA)
+To solve the memory and compute overhead of FFT, **LoRA (Low-Rank Adaptation)** freezes the original base model weights $W_0$ and inserts tiny trainable weight matrices in parallel into attention layers.
 
 Instead of updating a huge weight matrix $W_0$ of size $(d \times k)$ directly:
 $$\Delta W = B \times A$$
-where $B$ is a matrix of size $(d \times r)$ and $A$ is a matrix of size $(r \times k)$.
-By choosing a small rank $r$ (e.g. $r=8$), we reduce the number of parameters to train by **over 99%**, saving GPU memory and accelerating training time.
-
-#### Parameter Reduction Analysis (GPT-2 124M Base Model)
-Applying LoRA to the attention projection layers (`c_attn` of size $768 \times 2304$, across all 12 transformer layers):
-
-| Fine-Tuning Type | Rank ($r$) | Trainable Parameters | % of Base Model (124M) | Parameter Reduction |
-| :--- | :--- | :--- | :--- | :--- |
-| **Full Fine-Tuning** | *N/A* | 124,439,808 | 100.0000% | *None* |
-| **LoRA** | **r = 64** | 2,359,296 | 1.8960% | **98.1040%** |
-| **LoRA** | **r = 32** | 1,179,648 | 0.9480% | **99.0520%** |
-| **LoRA** | **r = 16** | 589,824 | 0.4740% | **99.5260%** |
-| **LoRA (Default)** | **r = 8** | 294,912 | 0.2370% | **99.7630%** |
-| **LoRA** | **r = 4** | 147,456 | 0.1185% | **99.8815%** |
-| **LoRA** | **r = 1** | 36,864 | 0.0296% | **99.9704%** |
+where $B$ is a matrix of size $(d \times r)$ and $A$ is a matrix of size $(r \times k)$, utilizing a very small bottleneck rank $r$ (e.g., $r=8$).
 
 ```mermaid
 graph LR
@@ -68,10 +76,49 @@ graph LR
     style ADD fill:#fffde7,stroke:#fbc02d,color:#000
 ```
 
-### 3. What is an Adapter?
-The small, trainable matrices ($A$ and $B$) inserted by LoRA are called **adapters**. During training, only these adapter weights are updated. The frozen base model weights remain untouched. The final saved checkpoints represent only these lightweight adapter files (often just a few megabytes!).
+- **Intuition**: By training only the lightweight adapters ($A$ and $B$) and keeping the base model frozen, we reduce trainable parameter footprint by **over 99%**, drastically cutting optimizer memory requirements.
+- **Limitation**: Because the updates $\Delta W$ are constrained to a low-rank subspace, LoRA's adaptation capacity is limited compared to FFT, which can lead to slightly lower accuracy on highly complex domain shifts.
 
-### 4. Model Merging (Merge & Unload)
+#### 📊 Parameter Reduction Analysis (GPT-2 124M Base Model)
+Applying LoRA to the attention projection layers (`c_attn` of size $768 \times 2304$, across all 12 transformer layers):
+
+| Fine-Tuning Type | Rank ($r$) | Trainable Parameters | % of Base Model (124M) | Parameter Reduction |
+| :--- | :--- | :--- | :--- | :--- |
+| **Full Fine-Tuning (FFT)** | *N/A* | 124,439,808 | 100.0000% | *None* |
+| **LoRA** | **r = 64** | 2,359,296 | 1.8960% | **98.1040%** |
+| **LoRA** | **r = 32** | 1,179,648 | 0.9480% | **99.0520%** |
+| **LoRA** | **r = 16** | 589,824 | 0.4740% | **99.5260%** |
+| **LoRA (Default)** | **r = 8** | 294,912 | 0.2370% | **99.7630%** |
+| **LoRA** | **r = 4** | 147,456 | 0.1185% | **99.8815%** |
+| **LoRA** | **r = 1** | 36,864 | 0.0296% | **99.9704%** |
+
+- **What is an Adapter?**: The small, trainable matrices ($A$ and $B$) inserted by LoRA are called **adapters**. During training, only these adapter weights are updated. The frozen base model weights remain untouched. The final saved checkpoints represent only these lightweight adapter files (often just a few megabytes!).
+
+---
+
+### 4. QLoRA (Quantized Low-Rank Adaptation)
+Even with LoRA, loading a large frozen base model in standard full-precision (FP16 or BF16) can exceed consumer GPU memory. 
+
+- **Intuition**: **QLoRA (Quantized LoRA)** quantizes the frozen base model weights down to 4-bit NormalFloat (NF4) precision during training. The trainable LoRA adapters are still computed in 16-bit precision.
+- **Memory Benefit**: Reduces base model memory footprint by up to 75% without losing model accuracy. This allows developers to fine-tune 8B-parameter models on single commodity GPUs (like NVIDIA T4 or L4).
+- **Features**: Uses *Double Quantization* to save quantization constants overhead, and *Paged Optimizers* to handle memory spikes gracefully by swapping parameters to CPU RAM.
+
+---
+
+### 5. DoRA (Weight-Decomposed Low-Rank Adaptation)
+Standard LoRA updates weights by adding a low-rank matrix increment $\Delta W$. However, full fine-tuning changes both weight magnitude and direction in complex, correlated ways that LoRA struggles to mimic.
+
+**DoRA (Weight-Decomposed LoRA)** solves this by decomposing model weights into:
+1. **Magnitude vector ($m$)**: Captures the scaling factor.
+2. **Direction matrix ($V$)**: Captures directional updates.
+
+DoRA freezes the base weights and applies LoRA updates *only* to the directional matrix $V$ while optimizing magnitude vector $m$ independently. This decomposition achieves training stability and model accuracy virtually identical to Full Fine-Tuning while preserving the parameter efficiency of LoRA.
+
+- **Intuition**: LoRA updates are constrained. DoRA resolves this by decomposing the weights update into two components: a scaling magnitude vector $m$ and a directional matrix $V$. It only trains LoRA adapters on direction $V$ while optimizing magnitude $m$ independently. This matches FFT convergence and accuracy perfectly, but at the cost of a tiny increase in optimizer state memory for magnitude vector.
+
+---
+
+### 6. Model Merging (Merge & Unload)
 Since the base model and adapters are separate files, loading both at prediction time adds inference latency because every layer must compute both the frozen base projections and the adapter projections. 
 
 To solve this, we **merge** the weights before serving:
@@ -97,30 +144,6 @@ graph TD
     style Latency fill:#ffebee,stroke:#ef5350,color:#000
     style Serving fill:#e8f5e9,stroke:#66bb6a,color:#000
 ```
-
-### 5. QLoRA (Quantized Low-Rank Adaptation)
-While LoRA reduces trainable parameters, the model still requires loading the frozen base parameters in full-precision (FP16 or BF16), which consumes substantial memory during training.
-
-**QLoRA (Quantized LoRA)** extends LoRA by:
-1. **4-bit NormalFloat (NF4) Quantization**: Quantizing the frozen base model weights down to 4-bit precision using an information-theoretically optimal NF4 data format.
-2. **Double Quantization**: Quantizing the quantization constants themselves, saving an additional 0.37 bits per parameter.
-3. **Paged Optimizers**: Spilling memory over to CPU RAM during activation memory spikes to avoid Out-Of-Memory (OOM) errors.
-
-This allows fine-tuning extremely large models (e.g. 8B parameters) on single commodity GPUs (like NVIDIA T4 or L4) while retaining near-identical precision as standard LoRA.
-
-### 6. Full Fine-Tuning (FFT)
-In **Full Fine-Tuning (FFT)**, we do not use low-rank adapters or freeze any parameters. Every single weight inside the pre-trained model (e.g. all 124 million parameters in GPT-2) is updated during training. 
-- **Advantage**: Maximal representational capacity and adaptation potential.
-- **Disadvantage**: Massive GPU memory overhead (requires storing optimizer states for all weights, typically 4x standard footprint) and risk of **catastrophic forgetting** (where the model loses its pre-trained general knowledge).
-
-### 7. DoRA (Weight-Decomposed Low-Rank Adaptation)
-Standard LoRA updates weights by adding a low-rank matrix increment $\Delta W$. However, full fine-tuning changes both weight magnitude and direction in complex, correlated ways that LoRA struggles to mimic.
-
-**DoRA (Weight-Decomposed LoRA)** solves this by decomposing model weights into:
-1. **Magnitude vector ($m$)**: Captures the scaling factor.
-2. **Direction matrix ($V$)**: Captures directional updates.
-
-DoRA freezes the base weights and applies LoRA updates *only* to the directional matrix $V$ while optimizing magnitude vector $m$ independently. This decomposition achieves training stability and model accuracy virtually identical to Full Fine-Tuning while preserving the parameter efficiency of LoRA.
 
 ---
 
