@@ -23,9 +23,7 @@ def train_gpt2_sft_job(
     lora_r: int,
     lora_alpha: int,
     max_steps: int = -1,
-    use_qlora: bool = False,
-    use_dora: bool = False,
-    use_fft: bool = False,
+    finetuning_type: str = "lora",
 ) -> str:
     from google.cloud import aiplatform
     
@@ -45,13 +43,8 @@ def train_gpt2_sft_job(
         "--lora-r", str(lora_r),
         "--lora-alpha", str(lora_alpha),
         "--max-steps", str(max_steps),
+        "--finetuning-type", finetuning_type,
     ]
-    if use_qlora:
-        args.append("--use-qlora")
-    if use_dora:
-        args.append("--use-dora")
-    if use_fft:
-        args.append("--use-fft")
     
     worker_pool_specs = [{
         "machine_spec": {
@@ -123,6 +116,8 @@ def deploy_model_to_endpoint(
         display_name=model_display_name,
         artifact_uri=model_gcs_uri,
         serving_container_image_uri=serving_container_image_uri,
+        serving_container_predict_route="/predict",
+        serving_container_health_route="/healthz",
         parent_model=parent_model,
         is_default_version=True,
     )
@@ -166,9 +161,7 @@ def gpt2_sft_pipeline(
     lora_r: int = 8,
     lora_alpha: int = 16,
     max_steps: int = -1,
-    use_qlora: bool = False,
-    use_dora: bool = False,
-    use_fft: bool = False,
+    finetuning_type: str = "lora",
 ):
     train_task = train_gpt2_sft_job(
         project_id=project_id,
@@ -187,9 +180,7 @@ def gpt2_sft_pipeline(
         lora_r=lora_r,
         lora_alpha=lora_alpha,
         max_steps=max_steps,
-        use_qlora=use_qlora,
-        use_dora=use_dora,
-        use_fft=use_fft,
+        finetuning_type=finetuning_type,
     )
     
     deploy_task = deploy_model_to_endpoint(

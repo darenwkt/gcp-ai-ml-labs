@@ -27,9 +27,7 @@ def parse_args():
     parser.add_argument("--lora-r", type=int, default=8)
     parser.add_argument("--lora-alpha", type=int, default=16)
     parser.add_argument("--max-steps", type=int, default=-1, help="Max training steps (-1 to disable)")
-    parser.add_argument("--use-qlora", action="store_true", help="Enable QLoRA 4-bit quantization fine-tuning")
-    parser.add_argument("--use-dora", action="store_true", help="Enable DoRA (Weight-Decomposed Low-Rank Adaptation)")
-    parser.add_argument("--use-fft", action="store_true", help="Enable Full Fine-Tuning (no LoRA/DoRA adapters)")
+    parser.add_argument("--finetuning-type", type=str, default="lora", choices=["fft", "lora", "qlora", "dora"], help="Fine-tuning mode (fft, lora, qlora, dora)")
     return parser.parse_args()
 
 def download_gcs_file(project_id, gcs_uri, local_path):
@@ -95,8 +93,6 @@ def format_prompts(example):
 
 def main():
     args = parse_args()
-    if args.use_fft and (args.use_qlora or args.use_dora):
-        raise ValueError("Full Fine-Tuning (FFT) cannot be combined with LoRA/QLoRA/DoRA adapters.")
     
     # 1. Load Dataset
     if args.dataset_csv_gcs:
@@ -128,7 +124,7 @@ def main():
         torch_dtype = torch.float32
     
     quantization_config = None
-    if args.use_qlora:
+    if args.finetuning_type == "qlora":
         print("QLoRA enabled. Configuring 4-bit BitsAndBytesConfig...")
         from transformers import BitsAndBytesConfig
         quantization_config = BitsAndBytesConfig(
@@ -145,15 +141,16 @@ def main():
         device_map=device_map
     )
 
-    if args.use_qlora:
+    if args.finetuning_type == "qlora":
         from peft import prepare_model_for_kbit_training
         print("Preparing quantized model for training...")
         model = prepare_model_for_kbit_training(model)
     
     # 3. Configure LoRA / DoRA
     lora_config = None
-    if not args.use_fft:
-        print(f"Configuring PEFT Adapter (DoRA: {args.use_dora})...")
+    if args.finetuning_type != "fft":
+        use_dora = (args.finetuning_type == "dora")
+        print(f"Configuring PEFT Adapter (DoRA: {use_dora})...")
         lora_config = LoraConfig(
             r=args.lora_r,
             lora_alpha=args.lora_alpha,
@@ -161,7 +158,7 @@ def main():
             lora_dropout=0.05,
             bias="none",
             task_type="CAUSAL_LM",
-            use_dora=args.use_dora
+            use_dora=use_dora
         )
     
     # 4. Training Arguments
@@ -195,7 +192,7 @@ def main():
     print("Fine-tuning completed successfully!")
     
     local_output_dir = "./merged_model"
-    if args.use_fft:
+    if args.finetuning_type == "fft":
         print("Saving full fine-tuned model...")
         trainer.model.save_pretrained(local_output_dir)
         tokenizer.save_pretrained(local_output_dir)

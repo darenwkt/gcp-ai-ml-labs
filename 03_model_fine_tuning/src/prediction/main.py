@@ -65,7 +65,7 @@ def init_model():
     model.eval()
     print("Model initialized successfully and ready for serving.")
 
-@app.route("/health", methods=["GET"])
+@app.route("/healthz", methods=["GET"])
 def health():
     if model is not None and tokenizer is not None:
         return jsonify({"status": "healthy"}), 200

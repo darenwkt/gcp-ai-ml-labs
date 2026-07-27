@@ -216,7 +216,8 @@ python 03_model_fine_tuning/pipeline/run_pipeline.py \
     --bucket-name <YOUR_GCS_BUCKET_NAME> \
     --pipeline-sa gpt2-finetune-pipeline-sa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com \
     --training-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-train:latest \
-    --serving-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-predict:latest
+    --serving-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-predict:latest \
+    --finetuning-type lora
 
 # Option B: QLoRA 4-bit Quantization Fine-Tuning (Lowest GPU VRAM footprint)
 python 03_model_fine_tuning/pipeline/run_pipeline.py \
@@ -225,7 +226,7 @@ python 03_model_fine_tuning/pipeline/run_pipeline.py \
     --pipeline-sa gpt2-finetune-pipeline-sa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com \
     --training-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-train:latest \
     --serving-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-predict:latest \
-    --use-qlora
+    --finetuning-type qlora
 
 # Option C: DoRA Weight-Decomposed Fine-Tuning (Matches FFT convergence accuracy)
 python 03_model_fine_tuning/pipeline/run_pipeline.py \
@@ -234,7 +235,7 @@ python 03_model_fine_tuning/pipeline/run_pipeline.py \
     --pipeline-sa gpt2-finetune-pipeline-sa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com \
     --training-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-train:latest \
     --serving-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-predict:latest \
-    --use-dora
+    --finetuning-type dora
 
 # Option D: Full Fine-Tuning - FFT (Updates 100% of base model weights)
 python 03_model_fine_tuning/pipeline/run_pipeline.py \
@@ -243,7 +244,7 @@ python 03_model_fine_tuning/pipeline/run_pipeline.py \
     --pipeline-sa gpt2-finetune-pipeline-sa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com \
     --training-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-train:latest \
     --serving-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-predict:latest \
-    --use-fft
+    --finetuning-type fft
 ```
 
 ---
