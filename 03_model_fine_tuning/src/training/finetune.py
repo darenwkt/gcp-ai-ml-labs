@@ -141,6 +141,24 @@ def main():
         device_map=device_map
     )
 
+    # Convert Conv1D to nn.Linear for GPT-2 models to resolve PEFT DoRA shape mismatch bug
+    if "gpt2" in args.model_id.lower():
+        from transformers.pytorch_utils import Conv1D
+        print("Converting Conv1D layers to standard nn.Linear layers for GPT-2 DoRA compatibility...")
+        def convert_conv1d_to_linear(module):
+            for name, child in module.named_children():
+                if isinstance(child, Conv1D):
+                    in_features, out_features = child.weight.shape
+                    linear = torch.nn.Linear(in_features, out_features)
+                    with torch.no_grad():
+                        linear.weight.copy_(child.weight.t())
+                        if child.bias is not None:
+                            linear.bias.copy_(child.bias)
+                    setattr(module, name, linear)
+                else:
+                    convert_conv1d_to_linear(child)
+        convert_conv1d_to_linear(model)
+
     if args.finetuning_type == "qlora":
         from peft import prepare_model_for_kbit_training
         print("Preparing quantized model for training...")
@@ -151,7 +169,6 @@ def main():
     if args.finetuning_type != "fft":
         use_dora = (args.finetuning_type == "dora")
         print(f"Configuring PEFT Adapter (DoRA: {use_dora})...")
-        fan_in_fan_out = True if "gpt2" in args.model_id.lower() else False
         lora_config = LoraConfig(
             r=args.lora_r,
             lora_alpha=args.lora_alpha,
@@ -159,8 +176,7 @@ def main():
             lora_dropout=0.05,
             bias="none",
             task_type="CAUSAL_LM",
-            use_dora=use_dora,
-            fan_in_fan_out=fan_in_fan_out
+            use_dora=use_dora
         )
     
     # 4. Training Arguments

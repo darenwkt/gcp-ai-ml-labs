@@ -261,11 +261,46 @@ Once the pipeline completes successfully and the model is deployed, send a predi
 {
   "instances": [
     {
-      "prompt": "Our office printer is displaying an error code E203 and won't print any documents.",
-      "max_new_tokens": 60
+      "prompt": "My printer is displaying error E203",
+      "max_new_tokens": 60,
+      "repetition_penalty": 1.2,
+      "no_repeat_ngram_size": 3
     }
   ]
 }
 ```
 
-The model will respond with an IT support agent resolution text.
+You can execute the query directly from the command line using:
+```bash
+echo '{"instances": [{"prompt": "My printer is displaying error E203", "max_new_tokens": 60, "repetition_penalty": 1.2, "no_repeat_ngram_size": 3}]}' > request.json
+
+gcloud ai endpoints predict <ENDPOINT_ID> \
+    --region=us-central1 \
+    --json-request=request.json
+```
+
+---
+
+### ⚖️ Baseline Comparison: Pretrained vs. Fine-Tuned
+
+To illustrate the benefits of fine-tuning, you can deploy a raw, un-fine-tuned baseline model to a separate endpoint and query them side-by-side.
+
+#### 1. Deploy the Baseline Pretrained Endpoint
+After building your prediction container image, run:
+```bash
+python 03_model_fine_tuning/pipeline/deploy_pretrained.py \
+    --project-id <YOUR_PROJECT_ID> \
+    --serving-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-predict:latest
+```
+
+#### 2. Comparison (Test Prompt: "My printer is displaying error E203")
+
+| Model | Response Quality | Output |
+|---|---|---|
+| **Raw Pretrained GPT-2** (No Fine-tuning) | ❌ Repetitive loops, signature block mimicry, does not attempt to resolve the issue. | `['Thank you for your help.\n\nPlease enter your name and address below.\n\nThanks for your help!\n\nYour printer is displaying error E203...']` |
+| **Fine-Tuned SFT Model** (LoRA/QLoRA) |  Directly addresses the IT support prompt and outlines troubleshooting steps. | `['The printer error E203 is typically caused by a hardware fault or empty toner cartridge. Try replacing the toner first and checking if the tray has a paper jam...']` |
+
+#### 💡 Why Fine-Tuning is helpful:
+- **Instruction Alignment**: Pretrained base models are designed to continue raw text documents, meaning they often generate email footers, forums, or signatures instead of answering your questions. Fine-Tuning aligns the model's behavior to follow instructions.
+- **Domain Specialization**: Fine-tuning teaches the model the specific vocabulary, style, and structure of IT helpdesk logs and resolutions.
+

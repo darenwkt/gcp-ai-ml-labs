@@ -93,6 +93,11 @@ def predict():
             f"### Response:\n"
         )
         
+        repetition_penalty = instance.get("repetition_penalty", 1.2)
+        no_repeat_ngram_size = instance.get("no_repeat_ngram_size", 3)
+        temperature = instance.get("temperature", 0.7)
+        top_p = instance.get("top_p", 0.9)
+        
         inputs = tokenizer(formatted_prompt, return_tensors="pt").to(device)
         
         with torch.no_grad():
@@ -102,8 +107,10 @@ def predict():
                 pad_token_id=tokenizer.pad_token_id,
                 eos_token_id=tokenizer.eos_token_id,
                 do_sample=True,
-                temperature=0.7,
-                top_p=0.9
+                temperature=temperature,
+                top_p=top_p,
+                repetition_penalty=repetition_penalty,
+                no_repeat_ngram_size=no_repeat_ngram_size
             )
             
         decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
