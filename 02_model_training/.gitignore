@@ -1,0 +1,25 @@
+.venv/
+__pycache__/
+*.pth
+*.pdf
+*.zip
+.DS_Store
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+.env
+wandb/
+**/wandb/
+
+# Scratch and Logs
+scratch*
+*.log
+alpaca_data.json
+*_logs.json
+*_logs.txt
+audit_errors*.json
+worker_time_window_logs.txt
+raw_time_logs.txt
+
+

@@ -11,8 +11,8 @@ Rather than just focusing on model algorithms in isolated Jupyter notebooks, the
 | Lab | Difficulty | Focus Area | GCP Services Used | Links |
 | :--- | :--- | :--- | :--- | :--- |
 | **01. Gemini Enterprise Agent Platform MLOps Pipeline** | Intermediate | Model Monitoring, Retraining, IaC | Gemini Enterprise Agent Platform, BigQuery, Cloud Functions, Pub/Sub, Terraform | [Lab Readme](01_mlops_pipeline/README.md) |
+| **02. Distributed GPT-2 Training and Deployment** | Advanced | 3D Parallelism, Multi-worker pretraining, SFT Fine-tuning (LoRA), Serving | Gemini Enterprise Agent Platform, Kubeflow Pipelines, Artifact Registry, Terraform | [Lab Readme](02_model_training/README.md) |
 | **03. IT Support Ticket LLM Fine-Tuning & Serving** | Advanced | PEFT/LoRA Fine-tuning, Vertex AI Pipelines, serving | Vertex AI, Artifact Registry, GCS, Terraform, Infrastructure Manager | [Lab Readme](03_model_fine_tuning/README.md) |
-| *More coming soon...* | - | Generative AI, Batch Inferencing, Feature Store | Gemini Enterprise Agent Platform Agent Builder, Dataflow, Gemini Enterprise Agent Platform Feature Store | *In Development* |
 
 ---
 
@@ -55,6 +55,32 @@ Build an end-to-end unsupervised anomaly detection system using an **Isolation F
 
 ---
 
+### Lab 2: Distributed GPT-2 pretraining (3D Parallelism) & Instruction Fine-Tuning (SFT)
+Implement a manual, zero-dependency 3D Distributed Parallelism grid topology (Data Parallelism, Pipeline Parallelism, Tensor Parallelism) to train a GPT-2 (124M) language model on Google Cloud Platform, followed by Instruction SFT Fine-tuning (LoRA) and auto-deployment to a serving endpoint.
+
+```
++--------------------------+     preprocess.py / HF     +----------------------------+
+| HuggingFace FineWeb-Edu  | ------------------------> |    Pretraining CustomJob   |
+|         Dataset          |                           | (DP x PP x TP on 12x T4s)  |
++--------------------------+                           +----------------------------+
+                                                                     |
+                                                                     v
++--------------------------+      Auto-Deployment      +----------------------------+
+|  Vertex AI Prediction    | <------------------------ |   LoRA Fine-tuned Model    |
+|         Endpoint         |                           |      (SFT / finetune)      |
++--------------------------+                           +----------------------------+
+```
+
+#### Key Concepts Learned:
+* **3D Distributed Parallelism**: Implementing manual tensor-sharding (TP), layer-pipelining (PP), and gradient-averaging (DP) in native PyTorch.
+* **Orchestrating Complex ML Workflows**: Building a multi-node Vertex AI CustomJob pretraining step inside a Kubeflow Pipeline.
+* **Instruction Fine-Tuning**: Wrapping PyTorch linear projections with Low-Rank Adapters (LoRA) and merging weights back for deployment.
+* **Serverless Serving**: Deploying a containerized Flask model server to a Vertex AI serving endpoint.
+
+👉 **Get started with [Lab 2: 02_model_training](02_model_training/README.md).**
+
+---
+
 ### Lab 3: IT Support Ticket LLM Fine-Tuning & Serving Pipeline
 Fine-tune a pre-trained LLM (such as `gpt2` or `Qwen2.5-0.5B-Instruct`) on a dataset of IT support tickets using Hugging Face **PEFT (LoRA)** inside a Vertex AI Pipeline. The pipeline automates dataset preparation, single-GPU training, model merging, registration in Vertex AI Model Registry, and deployment to a serverless Vertex AI Endpoint.
 
@@ -77,7 +103,6 @@ Fine-tune a pre-trained LLM (such as `gpt2` or `Qwen2.5-0.5B-Instruct`) on a dat
 * **Serverless Serving**: Deploying a containerized Flask model server loading fine-tuned weights on a Vertex AI endpoint.
 
 👉 **Get started with [Lab 3: 03_model_fine_tuning](03_model_fine_tuning/README.md).**
-
 
 ---
 
