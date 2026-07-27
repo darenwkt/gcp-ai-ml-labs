@@ -4,6 +4,30 @@ This lab implements an end-to-end MLOps pipeline on Google Cloud Platform to fin
 
 ---
 
+## 🎯 Problem Statement: Why SFT is Necessary
+
+A raw, pre-trained LLM (like base `gpt2`) is trained only to predict the next word in a sentence from internet pages. It does not know how to act as a helpdesk assistant or solve IT support tickets. 
+
+If we query the **un-fine-tuned base model** with a support request, it will mimic forum signature blocks or email threads rather than writing a resolution:
+
+*   **User Prompt**: `"My printer is displaying error E203"`
+*   **Pre-trained Base Model Output**: 
+    ```
+    "Thank you for your help. Please enter your name and address below. Thanks for your help! Your printer is displaying error E203. Please enter your name..."
+    ```
+
+**Supervised Fine-Tuning (SFT)** aligns the model to act as an assistant and specializes it in the domain of IT support resolution. 
+
+| Model | Task Behavior | Sample Resolution Output |
+|---|---|---|
+| **Raw Pretrained GPT-2** (Base) | ❌ Repetitive loops, email signature mimicry. Does not solve the issue. | `['Thank you for your help. Please enter your name...']` |
+| **Fine-Tuned SFT Model** (Fine-Tuned) |  Directly outlines debugging instructions for helpdesk tickets. | `['The printer error E203 is typically caused by a hardware fault or empty toner cartridge. Try replacing the toner first...']` |
+
+This lab implements and compares multiple SFT alignment methods (LoRA, QLoRA, DoRA, FFT) inside a fully automated GCP MLOps pipeline.
+
+---
+
+
 ## 🏗️ Cloud-Native Architecture
 
 ```mermaid
@@ -281,26 +305,14 @@ gcloud ai endpoints predict <ENDPOINT_ID> \
 
 ---
 
-### ⚖️ Baseline Comparison: Pretrained vs. Fine-Tuned
+### ⚖️ Deploying the Baseline Pretrained Endpoint for Comparison
 
-To illustrate the benefits of fine-tuning, you can deploy a raw, un-fine-tuned baseline model to a separate endpoint and query them side-by-side.
+To deploy the raw, un-fine-tuned baseline model to its own endpoint for side-by-side comparison, run the following:
 
-#### 1. Deploy the Baseline Pretrained Endpoint
-After building your prediction container image, run:
 ```bash
 python 03_model_fine_tuning/pipeline/deploy_pretrained.py \
     --project-id <YOUR_PROJECT_ID> \
     --serving-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-predict:latest
 ```
 
-#### 2. Comparison (Test Prompt: "My printer is displaying error E203")
-
-| Model | Response Quality | Output |
-|---|---|---|
-| **Raw Pretrained GPT-2** (No Fine-tuning) | ❌ Repetitive loops, signature block mimicry, does not attempt to resolve the issue. | `['Thank you for your help.\n\nPlease enter your name and address below.\n\nThanks for your help!\n\nYour printer is displaying error E203...']` |
-| **Fine-Tuned SFT Model** (LoRA/QLoRA) |  Directly addresses the IT support prompt and outlines troubleshooting steps. | `['The printer error E203 is typically caused by a hardware fault or empty toner cartridge. Try replacing the toner first and checking if the tray has a paper jam...']` |
-
-#### 💡 Why Fine-Tuning is helpful:
-- **Instruction Alignment**: Pretrained base models are designed to continue raw text documents, meaning they often generate email footers, forums, or signatures instead of answering your questions. Fine-Tuning aligns the model's behavior to follow instructions.
-- **Domain Specialization**: Fine-tuning teaches the model the specific vocabulary, style, and structure of IT helpdesk logs and resolutions.
 
