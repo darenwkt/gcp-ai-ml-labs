@@ -27,6 +27,7 @@ def parse_args():
     parser.add_argument("--lora-r", type=int, default=8)
     parser.add_argument("--lora-alpha", type=int, default=16)
     parser.add_argument("--max-steps", type=int, default=-1, help="Max training steps (-1 to disable)")
+    parser.add_argument("--use-qlora", action="store_true", help="Enable QLoRA 4-bit quantization fine-tuning")
     return parser.parse_args()
 
 def download_gcs_file(project_id, gcs_uri, local_path):
@@ -122,11 +123,28 @@ def main():
     else:
         torch_dtype = torch.float32
     
+    quantization_config = None
+    if args.use_qlora:
+        print("QLoRA enabled. Configuring 4-bit BitsAndBytesConfig...")
+        from transformers import BitsAndBytesConfig
+        quantization_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_compute_dtype=torch_dtype
+        )
+
     model = AutoModelForCausalLM.from_pretrained(
         args.model_id,
         torch_dtype=torch_dtype,
+        quantization_config=quantization_config,
         device_map=device_map
     )
+
+    if args.use_qlora:
+        from peft import prepare_model_for_kbit_training
+        print("Preparing quantized model for training...")
+        model = prepare_model_for_kbit_training(model)
     
     # 3. Configure LoRA
     lora_config = LoraConfig(

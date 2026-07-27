@@ -34,6 +34,7 @@ def main():
     parser.add_argument("--lora-r", type=int, default=8)
     parser.add_argument("--lora-alpha", type=int, default=16)
     parser.add_argument("--max-steps", type=int, default=-1, help="Max training steps (-1 to disable)")
+    parser.add_argument("--use-qlora", action="store_true", help="Enable QLoRA 4-bit quantization fine-tuning")
     
     args = parser.parse_args()
     
@@ -87,6 +88,7 @@ def main():
                 "lora_r": args.lora_r,
                 "lora_alpha": args.lora_alpha,
                 "max_steps": args.max_steps,
+                "use_qlora": args.use_qlora,
             }
         )
         

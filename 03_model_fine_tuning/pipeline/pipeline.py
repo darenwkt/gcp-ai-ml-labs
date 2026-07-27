@@ -23,6 +23,7 @@ def train_gpt2_sft_job(
     lora_r: int,
     lora_alpha: int,
     max_steps: int = -1,
+    use_qlora: bool = False,
 ) -> str:
     from google.cloud import aiplatform
     
@@ -43,6 +44,8 @@ def train_gpt2_sft_job(
         "--lora-alpha", str(lora_alpha),
         "--max-steps", str(max_steps),
     ]
+    if use_qlora:
+        args.append("--use-qlora")
     
     worker_pool_specs = [{
         "machine_spec": {
@@ -157,6 +160,7 @@ def gpt2_sft_pipeline(
     lora_r: int = 8,
     lora_alpha: int = 16,
     max_steps: int = -1,
+    use_qlora: bool = False,
 ):
     train_task = train_gpt2_sft_job(
         project_id=project_id,
@@ -175,6 +179,7 @@ def gpt2_sft_pipeline(
         lora_r=lora_r,
         lora_alpha=lora_alpha,
         max_steps=max_steps,
+        use_qlora=use_qlora,
     )
     
     deploy_task = deploy_model_to_endpoint(

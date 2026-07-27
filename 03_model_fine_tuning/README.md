@@ -98,6 +98,16 @@ graph TD
     style Serving fill:#e8f5e9,stroke:#66bb6a,color:#000
 ```
 
+### 5. QLoRA (Quantized Low-Rank Adaptation)
+While LoRA reduces trainable parameters, the model still requires loading the frozen base parameters in full-precision (FP16 or BF16), which consumes substantial memory during training.
+
+**QLoRA (Quantized LoRA)** extends LoRA by:
+1. **4-bit NormalFloat (NF4) Quantization**: Quantizing the frozen base model weights down to 4-bit precision using an information-theoretically optimal NF4 data format.
+2. **Double Quantization**: Quantizing the quantization constants themselves, saving an additional 0.37 bits per parameter.
+3. **Paged Optimizers**: Spilling memory over to CPU RAM during activation memory spikes to avoid Out-Of-Memory (OOM) errors.
+
+This allows fine-tuning extremely large models (e.g. 8B parameters) on single commodity GPUs (like NVIDIA T4 or L4) while retaining near-identical precision as standard LoRA.
+
 ---
 
 ## 📁 File Structure
@@ -158,14 +168,25 @@ gcloud builds submit --tag us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-fin
 ```
 
 ### 4. Run the Pipeline
-Run the compiler and runner python script to launch the SFT fine-tuning and deployment pipeline run on Vertex AI:
+Run the compiler and runner python script to launch the SFT fine-tuning and deployment pipeline run on Vertex AI. By default, it runs with standard **LoRA**. To use **QLoRA** 4-bit quantization, append the `--use-qlora` flag:
+
 ```bash
+# Option A: Standard LoRA Fine-Tuning
 python 03_model_fine_tuning/pipeline/run_pipeline.py \
     --project-id <YOUR_PROJECT_ID> \
     --bucket-name <YOUR_GCS_BUCKET_NAME> \
     --pipeline-sa gpt2-finetune-pipeline-sa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com \
     --training-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-train:latest \
     --serving-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-predict:latest
+
+# Option B: QLoRA 4-bit Quantization Fine-Tuning
+python 03_model_fine_tuning/pipeline/run_pipeline.py \
+    --project-id <YOUR_PROJECT_ID> \
+    --bucket-name <YOUR_GCS_BUCKET_NAME> \
+    --pipeline-sa gpt2-finetune-pipeline-sa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com \
+    --training-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-train:latest \
+    --serving-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-predict:latest \
+    --use-qlora
 ```
 
 ---
