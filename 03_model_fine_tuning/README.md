@@ -108,6 +108,20 @@ While LoRA reduces trainable parameters, the model still requires loading the fr
 
 This allows fine-tuning extremely large models (e.g. 8B parameters) on single commodity GPUs (like NVIDIA T4 or L4) while retaining near-identical precision as standard LoRA.
 
+### 6. Full Fine-Tuning (FFT)
+In **Full Fine-Tuning (FFT)**, we do not use low-rank adapters or freeze any parameters. Every single weight inside the pre-trained model (e.g. all 124 million parameters in GPT-2) is updated during training. 
+- **Advantage**: Maximal representational capacity and adaptation potential.
+- **Disadvantage**: Massive GPU memory overhead (requires storing optimizer states for all weights, typically 4x standard footprint) and risk of **catastrophic forgetting** (where the model loses its pre-trained general knowledge).
+
+### 7. DoRA (Weight-Decomposed Low-Rank Adaptation)
+Standard LoRA updates weights by adding a low-rank matrix increment $\Delta W$. However, full fine-tuning changes both weight magnitude and direction in complex, correlated ways that LoRA struggles to mimic.
+
+**DoRA (Weight-Decomposed LoRA)** solves this by decomposing model weights into:
+1. **Magnitude vector ($m$)**: Captures the scaling factor.
+2. **Direction matrix ($V$)**: Captures directional updates.
+
+DoRA freezes the base weights and applies LoRA updates *only* to the directional matrix $V$ while optimizing magnitude vector $m$ independently. This decomposition achieves training stability and model accuracy virtually identical to Full Fine-Tuning while preserving the parameter efficiency of LoRA.
+
 ---
 
 ## 📁 File Structure
@@ -168,10 +182,10 @@ gcloud builds submit --tag us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-fin
 ```
 
 ### 4. Run the Pipeline
-Run the compiler and runner python script to launch the SFT fine-tuning and deployment pipeline run on Vertex AI. By default, it runs with standard **LoRA**. To use **QLoRA** 4-bit quantization, append the `--use-qlora` flag:
+Run the compiler and runner python script to launch the SFT fine-tuning and deployment pipeline run on Vertex AI. You can choose from four fine-tuning modes:
 
 ```bash
-# Option A: Standard LoRA Fine-Tuning
+# Option A: Standard LoRA Fine-Tuning (Parameter-Efficient)
 python 03_model_fine_tuning/pipeline/run_pipeline.py \
     --project-id <YOUR_PROJECT_ID> \
     --bucket-name <YOUR_GCS_BUCKET_NAME> \
@@ -179,7 +193,7 @@ python 03_model_fine_tuning/pipeline/run_pipeline.py \
     --training-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-train:latest \
     --serving-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-predict:latest
 
-# Option B: QLoRA 4-bit Quantization Fine-Tuning
+# Option B: QLoRA 4-bit Quantization Fine-Tuning (Lowest GPU VRAM footprint)
 python 03_model_fine_tuning/pipeline/run_pipeline.py \
     --project-id <YOUR_PROJECT_ID> \
     --bucket-name <YOUR_GCS_BUCKET_NAME> \
@@ -187,6 +201,24 @@ python 03_model_fine_tuning/pipeline/run_pipeline.py \
     --training-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-train:latest \
     --serving-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-predict:latest \
     --use-qlora
+
+# Option C: DoRA Weight-Decomposed Fine-Tuning (Matches FFT convergence accuracy)
+python 03_model_fine_tuning/pipeline/run_pipeline.py \
+    --project-id <YOUR_PROJECT_ID> \
+    --bucket-name <YOUR_GCS_BUCKET_NAME> \
+    --pipeline-sa gpt2-finetune-pipeline-sa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com \
+    --training-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-train:latest \
+    --serving-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-predict:latest \
+    --use-dora
+
+# Option D: Full Fine-Tuning - FFT (Updates 100% of base model weights)
+python 03_model_fine_tuning/pipeline/run_pipeline.py \
+    --project-id <YOUR_PROJECT_ID> \
+    --bucket-name <YOUR_GCS_BUCKET_NAME> \
+    --pipeline-sa gpt2-finetune-pipeline-sa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com \
+    --training-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-train:latest \
+    --serving-image us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/gpt2-finetuning-images/gpt2-ft-predict:latest \
+    --use-fft
 ```
 
 ---

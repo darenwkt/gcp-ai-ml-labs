@@ -35,8 +35,12 @@ def main():
     parser.add_argument("--lora-alpha", type=int, default=16)
     parser.add_argument("--max-steps", type=int, default=-1, help="Max training steps (-1 to disable)")
     parser.add_argument("--use-qlora", action="store_true", help="Enable QLoRA 4-bit quantization fine-tuning")
+    parser.add_argument("--use-dora", action="store_true", help="Enable DoRA (Weight-Decomposed Low-Rank Adaptation)")
+    parser.add_argument("--use-fft", action="store_true", help="Enable Full Fine-Tuning (no LoRA/DoRA adapters)")
     
     args = parser.parse_args()
+    if args.use_fft and (args.use_qlora or args.use_dora):
+        raise ValueError("Full Fine-Tuning (FFT) cannot be combined with LoRA/QLoRA/DoRA adapters.")
     
     print("Initializing Vertex AI Client...")
     aiplatform.init(project=args.project_id, location=args.region)
@@ -89,6 +93,8 @@ def main():
                 "lora_alpha": args.lora_alpha,
                 "max_steps": args.max_steps,
                 "use_qlora": args.use_qlora,
+                "use_dora": args.use_dora,
+                "use_fft": args.use_fft,
             }
         )
         

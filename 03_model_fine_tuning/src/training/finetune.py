@@ -28,6 +28,8 @@ def parse_args():
     parser.add_argument("--lora-alpha", type=int, default=16)
     parser.add_argument("--max-steps", type=int, default=-1, help="Max training steps (-1 to disable)")
     parser.add_argument("--use-qlora", action="store_true", help="Enable QLoRA 4-bit quantization fine-tuning")
+    parser.add_argument("--use-dora", action="store_true", help="Enable DoRA (Weight-Decomposed Low-Rank Adaptation)")
+    parser.add_argument("--use-fft", action="store_true", help="Enable Full Fine-Tuning (no LoRA/DoRA adapters)")
     return parser.parse_args()
 
 def download_gcs_file(project_id, gcs_uri, local_path):
@@ -93,6 +95,8 @@ def format_prompts(example):
 
 def main():
     args = parse_args()
+    if args.use_fft and (args.use_qlora or args.use_dora):
+        raise ValueError("Full Fine-Tuning (FFT) cannot be combined with LoRA/QLoRA/DoRA adapters.")
     
     # 1. Load Dataset
     if args.dataset_csv_gcs:
@@ -146,15 +150,19 @@ def main():
         print("Preparing quantized model for training...")
         model = prepare_model_for_kbit_training(model)
     
-    # 3. Configure LoRA
-    lora_config = LoraConfig(
-        r=args.lora_r,
-        lora_alpha=args.lora_alpha,
-        target_modules=["c_attn"] if "gpt2" in args.model_id.lower() else ["q_proj", "v_proj"],
-        lora_dropout=0.05,
-        bias="none",
-        task_type="CAUSAL_LM"
-    )
+    # 3. Configure LoRA / DoRA
+    lora_config = None
+    if not args.use_fft:
+        print(f"Configuring PEFT Adapter (DoRA: {args.use_dora})...")
+        lora_config = LoraConfig(
+            r=args.lora_r,
+            lora_alpha=args.lora_alpha,
+            target_modules=["c_attn"] if "gpt2" in args.model_id.lower() else ["q_proj", "v_proj"],
+            lora_dropout=0.05,
+            bias="none",
+            task_type="CAUSAL_LM",
+            use_dora=args.use_dora
+        )
     
     # 4. Training Arguments
     training_args = TrainingArguments(
@@ -186,25 +194,31 @@ def main():
     trainer.train()
     print("Fine-tuning completed successfully!")
     
-    # Save adapter
-    adapter_dir = "./adapter"
-    trainer.model.save_pretrained(adapter_dir)
-    print("Adapter saved locally.")
-    
-    # 6. Merge Adapter with Base Model
-    print("Merging adapter weights with base model...")
-    base_model = AutoModelForCausalLM.from_pretrained(
-        args.model_id,
-        torch_dtype=torch_dtype,
-        device_map="auto" if torch.cuda.is_available() else None
-    )
-    model_merged = PeftModel.from_pretrained(base_model, adapter_dir)
-    model_final = model_merged.merge_and_unload()
-    
     local_output_dir = "./merged_model"
-    model_final.save_pretrained(local_output_dir)
-    tokenizer.save_pretrained(local_output_dir)
-    print("Merged model weights saved locally.")
+    if args.use_fft:
+        print("Saving full fine-tuned model...")
+        trainer.model.save_pretrained(local_output_dir)
+        tokenizer.save_pretrained(local_output_dir)
+        print("Full fine-tuned model saved locally.")
+    else:
+        # Save adapter
+        adapter_dir = "./adapter"
+        trainer.model.save_pretrained(adapter_dir)
+        print("Adapter saved locally.")
+        
+        # 6. Merge Adapter with Base Model
+        print("Merging adapter weights with base model...")
+        base_model = AutoModelForCausalLM.from_pretrained(
+            args.model_id,
+            torch_dtype=torch_dtype,
+            device_map="auto" if torch.cuda.is_available() else None
+        )
+        model_merged = PeftModel.from_pretrained(base_model, adapter_dir)
+        model_final = model_merged.merge_and_unload()
+        
+        model_final.save_pretrained(local_output_dir)
+        tokenizer.save_pretrained(local_output_dir)
+        print("Merged model weights saved locally.")
     
     # 7. Upload to GCS
     upload_folder_to_gcs(args.project_id, local_output_dir, args.output_model_gcs)
