@@ -33,6 +33,7 @@ def main():
     parser.add_argument("--learning-rate", type=float, default=2e-5)
     parser.add_argument("--lora-r", type=int, default=8)
     parser.add_argument("--lora-alpha", type=int, default=16)
+    parser.add_argument("--max-steps", type=int, default=-1, help="Max training steps (-1 to disable)")
     
     args = parser.parse_args()
     
@@ -85,6 +86,7 @@ def main():
                 "learning_rate": args.learning_rate,
                 "lora_r": args.lora_r,
                 "lora_alpha": args.lora_alpha,
+                "max_steps": args.max_steps,
             }
         )
         

@@ -22,6 +22,7 @@ def train_gpt2_sft_job(
     learning_rate: float,
     lora_r: int,
     lora_alpha: int,
+    max_steps: int = -1,
 ) -> str:
     from google.cloud import aiplatform
     
@@ -40,6 +41,7 @@ def train_gpt2_sft_job(
         "--learning-rate", str(learning_rate),
         "--lora-r", str(lora_r),
         "--lora-alpha", str(lora_alpha),
+        "--max-steps", str(max_steps),
     ]
     
     worker_pool_specs = [{
@@ -154,6 +156,7 @@ def gpt2_sft_pipeline(
     learning_rate: float = 2e-5,
     lora_r: int = 8,
     lora_alpha: int = 16,
+    max_steps: int = -1,
 ):
     train_task = train_gpt2_sft_job(
         project_id=project_id,
@@ -171,6 +174,7 @@ def gpt2_sft_pipeline(
         learning_rate=learning_rate,
         lora_r=lora_r,
         lora_alpha=lora_alpha,
+        max_steps=max_steps,
     )
     
     deploy_task = deploy_model_to_endpoint(

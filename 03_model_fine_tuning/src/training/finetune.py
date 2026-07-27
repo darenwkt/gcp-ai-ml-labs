@@ -26,6 +26,7 @@ def parse_args():
     parser.add_argument("--learning-rate", type=float, default=2e-5)
     parser.add_argument("--lora-r", type=int, default=8)
     parser.add_argument("--lora-alpha", type=int, default=16)
+    parser.add_argument("--max-steps", type=int, default=-1, help="Max training steps (-1 to disable)")
     return parser.parse_args()
 
 def download_gcs_file(project_id, gcs_uri, local_path):
@@ -116,7 +117,10 @@ def main():
         tokenizer.pad_token = tokenizer.eos_token
         
     device_map = "auto" if torch.cuda.is_available() else None
-    torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+    if torch.cuda.is_available():
+        torch_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+    else:
+        torch_dtype = torch.float32
     
     model = AutoModelForCausalLM.from_pretrained(
         args.model_id,
@@ -143,8 +147,10 @@ def main():
         weight_decay=0.01,
         logging_steps=10,
         save_strategy="no",
-        fp16=torch.cuda.is_available(),
-        report_to="none"
+        bf16=torch.cuda.is_available() and torch.cuda.is_bf16_supported(),
+        fp16=torch.cuda.is_available() and not torch.cuda.is_bf16_supported(),
+        report_to="none",
+        max_steps=args.max_steps
     )
     
     # 5. Initialize SFTTrainer

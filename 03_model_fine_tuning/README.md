@@ -40,6 +40,21 @@ $$\Delta W = B \times A$$
 where $B$ is a matrix of size $(d \times r)$ and $A$ is a matrix of size $(r \times k)$.
 By choosing a small rank $r$ (e.g. $r=8$), we reduce the number of parameters to train by **over 99%**, saving GPU memory and accelerating training time.
 
+```mermaid
+graph LR
+    X["Input (x)"] --> |"Forward Pass"| W0["Frozen Base Weights (W₀) <br> (d × k)"]
+    X --> |"Down-projection (A)"| MA["Trainable Matrix A <br> (d × r)"]
+    MA --> |"Up-projection (B)"| MB["Trainable Matrix B <br> (r × k)"]
+    W0 --> |"W₀ · x"| ADD["+ (Add outputs)"]
+    MB --> |"ΔW · x = B · A · x"| ADD
+    ADD --> Y["Output (h)"]
+    
+    style W0 fill:#eaebff,stroke:#5c6bc0,stroke-width:2px,color:#000
+    style MA fill:#e8f5e9,stroke:#4caf50,stroke-width:1px,color:#000
+    style MB fill:#e8f5e9,stroke:#4caf50,stroke-width:1px,color:#000
+    style ADD fill:#fffde7,stroke:#fbc02d,color:#000
+```
+
 ### 3. What is an Adapter?
 The small, trainable matrices ($A$ and $B$) inserted by LoRA are called **adapters**. During training, only these adapter weights are updated. The frozen base model weights remain untouched. The final saved checkpoints represent only these lightweight adapter files (often just a few megabytes!).
 
@@ -49,6 +64,26 @@ Since the base model and adapters are separate files, loading both at prediction
 To solve this, we **merge** the weights before serving:
 $$W_{final} = W_0 + \Delta W$$
 This merges the adapter weights permanently back into the base model weights, resulting in a single standard transformer model directory. This eliminates any serving latency penalty!
+
+```mermaid
+graph TD
+    subgraph "Separate Weights (Training / Development)"
+        B1["Frozen Base Model <br> (W₀: Base checkpoint)"] 
+        A1["Trainable Adapter <br> (ΔW = B × A: Tiny adapter file)"]
+        B1 & A1 --> |Dual Forward Passes| Latency["Overhead Inference Latency"]
+    end
+    
+    subgraph "Merged Weights (Zero Overhead Production)"
+        B2["Frozen Base Model <br> (W₀)"]
+        A2["Trainable Adapter <br> (ΔW)"]
+        B2 --> |"Merge weights: W₀ + ΔW"| M["Merged Final Model <br> (W_final)"]
+        A2 --> M
+        M --> |Single Forward Pass| Serving["Fast Serverless Serving <br> (Zero latency penalty)"]
+    end
+    
+    style Latency fill:#ffebee,stroke:#ef5350,color:#000
+    style Serving fill:#e8f5e9,stroke:#66bb6a,color:#000
+```
 
 ---
 
